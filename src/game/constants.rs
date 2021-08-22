@@ -7,6 +7,7 @@ pub const PLAYER_SPEED: f32 = 300.0;
 pub const INVADER_SPEED: f32 = 200.0;
 pub const INVADER_AMOUNT: i32 = 5;
 pub const INVADER_SIZE: f32 = 10.0;
+pub const SCORE_BOARD_PADDING:f32=20.0;
 
 
 

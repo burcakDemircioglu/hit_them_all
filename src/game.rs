@@ -2,7 +2,7 @@ use std::convert::TryInto;
 
 use ggez::{
     self, event,
-    graphics::{self, Color, DrawMode, DrawParam, Mesh},
+    graphics::{self, Color, DrawMode, DrawParam, Mesh, Text},
     input::keyboard::{self, KeyCode},
     nalgebra as na, Context, GameResult,
 };
@@ -86,7 +86,7 @@ impl event::EventHandler for GameState {
         Ok(())
     }
     fn draw(&mut self, context: &mut Context) -> GameResult {
-        graphics::clear(context, Color::from_rgb(100, 0, 0));
+        graphics::clear(context, Color::from_rgb(0, 100, 0));
         let (screend_width, screen_hight) = graphics::drawable_size(context);
         let (screend_width_half, screen_hight_half) = (screend_width * 0.5, screen_hight * 0.5);
 
@@ -112,6 +112,31 @@ impl event::EventHandler for GameState {
                 Mesh::new_rectangle(context, DrawMode::fill(), invader, graphics::WHITE)?;
             graphics::draw(context, &invader_mesh, DrawParam::default())?;
         }
+
+        // Draw score board
+        let mut life_text = Text::new(format!("Life: {}", self.life));
+        life_text.set_font(graphics::Font::default(), graphics::Scale::uniform(24.0));
+
+        let (life_text_w, life_text_h) = life_text.dimensions(context);
+        let mut life_pos = na::Point2::new(screend_width_half, constants::SCORE_BOARD_PADDING);
+        life_pos -= na::Vector2::new(life_text_w as f32 * 0.5, life_text_h as f32 * 0.5);
+
+        let mut draw_param = graphics::DrawParam::default();
+        draw_param.dest = life_pos.into();
+        graphics::draw(context, &life_text, draw_param)?;
+
+        let mut score_text = Text::new(format!("Score: {}", self.score));
+        score_text.set_font(graphics::Font::default(), graphics::Scale::uniform(24.0));
+
+        let (score_text_w, score_text_h) = score_text.dimensions(context);
+        let mut score_pos = na::Point2::new(
+            screend_width_half,
+            constants::SCORE_BOARD_PADDING + life_text_h as f32,
+        );
+        score_pos -= na::Vector2::new(score_text_w as f32 * 0.5, score_text_h as f32 * 0.5);
+
+        draw_param.dest = score_pos.into();
+        graphics::draw(context, &score_text, draw_param)?;
 
         graphics::present(context)?;
         Ok(())
