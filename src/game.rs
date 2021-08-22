@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use ggez::{
     self, event,
     graphics::{self, Color, DrawMode, DrawParam, Mesh, Text},
@@ -8,13 +6,13 @@ use ggez::{
 };
 use rand::{thread_rng, Rng};
 
-mod constants;
+pub mod constants;
 mod utilities;
 
 pub struct GameState {
     player_pos: na::Point2<f32>,
     invader_positions: std::vec::Vec<na::Point2<f32>>,
-    fire_pos: std::vec::Vec<na::Point2<f32>>,
+    fire_positions: std::vec::Vec<na::Point2<f32>>,
     score: i32,
     life: i32,
 }
@@ -40,7 +38,7 @@ impl GameState {
                 screen_hight - constants::PLAYER_PADDING,
             ),
             invader_positions: invaders,
-            fire_pos: std::vec::Vec::new(),
+            fire_positions: std::vec::Vec::new(),
             score: 0,
             life: 3,
         }
@@ -65,6 +63,16 @@ impl event::EventHandler for GameState {
             }
         }
 
+        for index in self.fire_positions.len()..0 {
+            if self.fire_positions[index].y < 0.0 {
+                self.fire_positions.remove(index);
+            }
+        }
+
+        for index in 0..self.fire_positions.len() {
+            self.fire_positions[index].y -= constants::INVADER_SPEED * dt;
+        }
+        
         if keyboard::is_key_pressed(context, KeyCode::Right) {
             self.player_pos.x += constants::PLAYER_SPEED * dt;
             utilities::clamp(
@@ -83,12 +91,21 @@ impl event::EventHandler for GameState {
             )
         }
 
+        if keyboard::is_key_pressed(context, KeyCode::Space) {
+            self.fire_positions
+                .push(na::Point2::<f32>::new(self.player_pos.x, self.player_pos.y));
+            self.fire_positions.push(na::Point2::<f32>::new(
+                self.player_pos.x + constants::PLAYER_WIDTH,
+                self.player_pos.y,
+            ));
+        }
+
         Ok(())
     }
     fn draw(&mut self, context: &mut Context) -> GameResult {
         graphics::clear(context, Color::from_rgb(0, 100, 0));
-        let (screend_width, screen_hight) = graphics::drawable_size(context);
-        let (screend_width_half, screen_hight_half) = (screend_width * 0.5, screen_hight * 0.5);
+        let screend_width = graphics::drawable_size(context).0;
+        let screend_width_half = screend_width * 0.5;
 
         // Draw player
         let player = graphics::Rect::new(
@@ -111,6 +128,20 @@ impl event::EventHandler for GameState {
             let invader_mesh =
                 Mesh::new_rectangle(context, DrawMode::fill(), invader, graphics::WHITE)?;
             graphics::draw(context, &invader_mesh, DrawParam::default())?;
+        }
+
+        // Draw fires
+        for fire_pos in self.fire_positions.iter() {
+            let origin = *fire_pos;
+            let dest = na::Point2::new(fire_pos.x, fire_pos.y + constants::FIRE_LENGTH);
+
+            let fire_mesh = Mesh::new_line(
+                context,
+                &[origin, dest],
+                constants::FIRE_WIDTH,
+                Color::from_rgb(100, 0, 0),
+            )?;
+            graphics::draw(context, &fire_mesh, DrawParam::default())?;
         }
 
         // Draw score board
