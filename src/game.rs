@@ -1,12 +1,10 @@
+use crate::constants;
+use crate::utilities;
 use ggez::{
     self, event,
     graphics::{self, Color, DrawMode, DrawParam, Mesh, Text},
     nalgebra as na, Context, GameResult,
 };
-use rand::{thread_rng, Rng};
-
-use crate::constants;
-use crate::utilities;
 
 pub struct GameState {
     player_pos: na::Point2<f32>,
@@ -20,24 +18,13 @@ pub struct GameState {
 impl GameState {
     pub fn new(context: &mut Context) -> Self {
         let (screend_width, screen_hight) = graphics::drawable_size(context);
-        let screend_width_half = screend_width * 0.5;
-        let mut rng = thread_rng();
-
-        let mut invaders = std::vec::Vec::<na::Point2<f32>>::new();
-
-        for _i in 0..constants::INVADER_AMOUNT {
-            invaders.push(na::Point2::<f32>::new(
-                rng.gen_range(0.0, screend_width - constants::INVADER_SIZE),
-                rng.gen_range(-1000.0, 0.0),
-            ));
-        }
 
         GameState {
             player_pos: na::Point2::new(
-                screend_width_half - constants::PLAYER_WIDTH_HALF,
+                (screend_width * 0.5) - constants::PLAYER_WIDTH_HALF,
                 screen_hight - constants::PLAYER_PADDING,
             ),
-            invader_positions: invaders,
+            invader_positions: utilities::create_invaders(screend_width),
             fire_positions: std::vec::Vec::new(),
             score: 0,
             life: 3,
@@ -50,42 +37,48 @@ impl event::EventHandler for GameState {
     fn update(&mut self, context: &mut Context) -> GameResult {
         let dt = ggez::timer::delta(context).as_secs_f32();
         let (screend_width, screen_height) = graphics::drawable_size(context);
-        let mut rng = thread_rng();
 
+        // Delete out of window fires
         self.fire_positions.retain(|fire| fire.y > 0.0);
+
+        // Find the hits
         let (hit_fire, hit_invader) = utilities::get_hits(
             &mut self.fire_positions,
             &mut self.invader_positions,
             &mut self.score,
         );
 
+        // Delete hit fires
         self.fire_positions.retain(|fire| !hit_fire.contains(fire));
 
+        // Move fires
         for fire_pos in &mut self.fire_positions {
             fire_pos.y -= constants::FIRE_SPEED * dt;
         }
 
+        // Move invaders
         for invader_pos in &mut self.invader_positions {
+            // Reset hit invaders
             if hit_invader.contains(invader_pos) {
-                *invader_pos = na::Point2::new(
-                    rng.gen_range(0.0, screend_width - constants::INVADER_SIZE),
-                    0.0,
-                );
+                *invader_pos = utilities::get_init_invader_pos(screend_width);
             }
 
+            // Move invaders
             invader_pos.y += constants::INVADER_SPEED * dt;
 
+            // Reset out of window invaders
             if invader_pos.y > screen_height {
-                *invader_pos = na::Point2::new(
-                    rng.gen_range(0.0, screend_width - constants::INVADER_SIZE),
-                    0.0,
-                );
+                *invader_pos = utilities::get_init_invader_pos(screend_width);
                 self.life -= 1;
             }
         }
 
         utilities::set_controls(context, dt, screend_width, &mut self.player_pos);
-        utilities::create_fires(&mut self.last_fire_time, &mut self.fire_positions, self.player_pos);
+        utilities::create_fires(
+            &mut self.last_fire_time,
+            &mut self.fire_positions,
+            self.player_pos,
+        );
 
         Ok(())
     }

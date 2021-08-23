@@ -3,6 +3,7 @@ use ggez::{
     input::keyboard::{self, KeyCode},
     nalgebra as na, Context,
 };
+use rand::{thread_rng, Rng};
 use std::time::SystemTime;
 
 use crate::constants;
@@ -28,6 +29,13 @@ pub fn is_hit(
         && fire_x + fire_w > invader_x
         && fire_y < invader_y
         && fire_y > invader_y - invader_h;
+}
+
+pub fn get_init_invader_pos(screend_width: f32) -> na::Point<f32, na::U2> {
+    return na::Point2::new(
+        thread_rng().gen_range(0.0, screend_width - constants::INVADER_SIZE),
+        0.0,
+    );
 }
 
 pub fn get_hits(
@@ -87,24 +95,40 @@ pub fn set_controls(
     }
 }
 
-pub fn get_current_time_as_millis()->u128{
-return  SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
+pub fn create_invaders(screend_width: f32) -> Vec<na::Point<f32, na::U2>> {
+    let mut rng = thread_rng();
+
+    let mut invaders = std::vec::Vec::<na::Point2<f32>>::new();
+    for _i in 0..constants::INVADER_AMOUNT {
+        invaders.push(na::Point2::<f32>::new(
+            rng.gen_range(0.0, screend_width - constants::INVADER_SIZE),
+            rng.gen_range(-1000.0, 0.0),
+        ));
+    }
+    invaders
 }
 
-pub fn create_fires(last_fire_time:&mut u128, fire_positions: &mut std::vec::Vec<na::Point2<f32>>, player_pos: na::Point2<f32>){
-        let now = get_current_time_as_millis();
+pub fn get_current_time_as_millis() -> u128 {
+    return SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+}
 
-        let time_past_since_last_fire = now - *last_fire_time;
-        if time_past_since_last_fire > constants::FIRE_PADDING as u128 {
-            fire_positions
-                .push(na::Point2::<f32>::new(player_pos.x, player_pos.y));
-            fire_positions.push(na::Point2::<f32>::new(
-                player_pos.x + constants::PLAYER_WIDTH,
-                player_pos.y,
-            ));
-            *last_fire_time = now;
-        }
+pub fn create_fires(
+    last_fire_time: &mut u128,
+    fire_positions: &mut std::vec::Vec<na::Point2<f32>>,
+    player_pos: na::Point2<f32>,
+) {
+    let now = get_current_time_as_millis();
+
+    let time_past_since_last_fire = now - *last_fire_time;
+    if time_past_since_last_fire > constants::FIRE_PADDING as u128 {
+        fire_positions.push(na::Point2::<f32>::new(player_pos.x, player_pos.y));
+        fire_positions.push(na::Point2::<f32>::new(
+            player_pos.x + constants::PLAYER_WIDTH,
+            player_pos.y,
+        ));
+        *last_fire_time = now;
+    }
 }
