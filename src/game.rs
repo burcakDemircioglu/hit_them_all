@@ -1,13 +1,12 @@
 use ggez::{
     self, event,
     graphics::{self, Color, DrawMode, DrawParam, Mesh, Text},
-    input::keyboard::{self, KeyCode},
     nalgebra as na, Context, GameResult,
 };
 use rand::{thread_rng, Rng};
 
-pub mod constants;
-mod utilities;
+use crate::constants;
+use crate::utilities;
 
 pub struct GameState {
     player_pos: na::Point2<f32>,
@@ -15,17 +14,18 @@ pub struct GameState {
     fire_positions: std::vec::Vec<na::Point2<f32>>,
     score: i32,
     life: i32,
+    last_fire_time: u128,
 }
 
 impl GameState {
     pub fn new(context: &mut Context) -> Self {
         let (screend_width, screen_hight) = graphics::drawable_size(context);
-        let (screend_width_half, screen_hight_half) = (screend_width * 0.5, screen_hight * 0.5);
+        let screend_width_half = screend_width * 0.5;
         let mut rng = thread_rng();
 
         let mut invaders = std::vec::Vec::<na::Point2<f32>>::new();
 
-        for i in 0..constants::INVADER_AMOUNT {
+        for _i in 0..constants::INVADER_AMOUNT {
             invaders.push(na::Point2::<f32>::new(
                 rng.gen_range(0.0, screend_width - constants::INVADER_SIZE),
                 rng.gen_range(-1000.0, 0.0),
@@ -41,6 +41,7 @@ impl GameState {
             fire_positions: std::vec::Vec::new(),
             score: 0,
             life: 3,
+            last_fire_time: utilities::get_current_time_as_millis(),
         }
     }
 }
@@ -51,7 +52,27 @@ impl event::EventHandler for GameState {
         let (screend_width, screen_height) = graphics::drawable_size(context);
         let mut rng = thread_rng();
 
+        self.fire_positions.retain(|fire| fire.y > 0.0);
+        let (hit_fire, hit_invader) = utilities::get_hits(
+            &mut self.fire_positions,
+            &mut self.invader_positions,
+            &mut self.score,
+        );
+
+        self.fire_positions.retain(|fire| !hit_fire.contains(fire));
+
+        for fire_pos in &mut self.fire_positions {
+            fire_pos.y -= constants::FIRE_SPEED * dt;
+        }
+
         for invader_pos in &mut self.invader_positions {
+            if hit_invader.contains(invader_pos) {
+                *invader_pos = na::Point2::new(
+                    rng.gen_range(0.0, screend_width - constants::INVADER_SIZE),
+                    0.0,
+                );
+            }
+
             invader_pos.y += constants::INVADER_SPEED * dt;
 
             if invader_pos.y > screen_height {
@@ -63,47 +84,14 @@ impl event::EventHandler for GameState {
             }
         }
 
-        for index in self.fire_positions.len()..0 {
-            if self.fire_positions[index].y < 0.0 {
-                self.fire_positions.remove(index);
-            }
-        }
-
-        for index in 0..self.fire_positions.len() {
-            self.fire_positions[index].y -= constants::INVADER_SPEED * dt;
-        }
-        
-        if keyboard::is_key_pressed(context, KeyCode::Right) {
-            self.player_pos.x += constants::PLAYER_SPEED * dt;
-            utilities::clamp(
-                &mut self.player_pos.x,
-                0.0,
-                screend_width - constants::PLAYER_WIDTH,
-            )
-        }
-
-        if keyboard::is_key_pressed(context, KeyCode::Left) {
-            self.player_pos.x -= constants::PLAYER_SPEED * dt;
-            utilities::clamp(
-                &mut self.player_pos.x,
-                0.0,
-                screend_width - constants::PLAYER_WIDTH,
-            )
-        }
-
-        if keyboard::is_key_pressed(context, KeyCode::Space) {
-            self.fire_positions
-                .push(na::Point2::<f32>::new(self.player_pos.x, self.player_pos.y));
-            self.fire_positions.push(na::Point2::<f32>::new(
-                self.player_pos.x + constants::PLAYER_WIDTH,
-                self.player_pos.y,
-            ));
-        }
+        utilities::set_controls(context, dt, screend_width, &mut self.player_pos);
+        utilities::create_fires(&mut self.last_fire_time, &mut self.fire_positions, self.player_pos);
 
         Ok(())
     }
+
     fn draw(&mut self, context: &mut Context) -> GameResult {
-        graphics::clear(context, Color::from_rgb(0, 100, 0));
+        graphics::clear(context, Color::from_rgb(0, 0, 0));
         let screend_width = graphics::drawable_size(context).0;
         let screend_width_half = screend_width * 0.5;
 

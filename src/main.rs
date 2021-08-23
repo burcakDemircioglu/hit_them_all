@@ -1,5 +1,7 @@
 use ggez::{self, graphics, GameResult, event};
 mod game;
+mod utilities;
+mod constants;
 
 fn main() -> GameResult{
     let context_builder = ggez::ContextBuilder::new("Hit Them All", "BurcakKam");
