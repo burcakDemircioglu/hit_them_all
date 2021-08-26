@@ -17,12 +17,12 @@ pub struct GameState {
 
 impl GameState {
     pub fn new(context: &mut Context) -> Self {
-        let (screend_width, screen_hight) = graphics::drawable_size(context);
+        let (screend_width, screen_height) = graphics::drawable_size(context);
 
         GameState {
             player_pos: na::Point2::new(
                 (screend_width * 0.5) - constants::PLAYER_WIDTH_HALF,
-                screen_hight - constants::PLAYER_PADDING,
+                screen_height - constants::PLAYER_PADDING,
             ),
             invader_positions: utilities::create_invaders(screend_width),
             fire_positions: std::vec::Vec::new(),
@@ -37,6 +37,25 @@ impl event::EventHandler for GameState {
     fn update(&mut self, context: &mut Context) -> GameResult {
         let dt = ggez::timer::delta(context).as_secs_f32();
         let (screend_width, screen_height) = graphics::drawable_size(context);
+
+        utilities::set_controls(
+            context,
+            dt,
+            screend_width,
+            &mut self.player_pos,
+            &mut self.life,
+            &mut self.score,
+        );
+
+        if self.life <= 0 {
+            utilities::reset_the_game(
+                context,
+                &mut self.player_pos,
+                &mut self.invader_positions,
+                &mut self.fire_positions,
+            );
+            return Ok(());
+        }
 
         // Delete out of window fires
         self.fire_positions.retain(|fire| fire.y > 0.0);
@@ -73,7 +92,6 @@ impl event::EventHandler for GameState {
             }
         }
 
-        utilities::set_controls(context, dt, screend_width, &mut self.player_pos);
         utilities::create_fires(
             &mut self.last_fire_time,
             &mut self.fire_positions,
@@ -84,10 +102,41 @@ impl event::EventHandler for GameState {
     }
 
     fn draw(&mut self, context: &mut Context) -> GameResult {
-        graphics::clear(context, Color::from_rgb(0, 0, 0));
-        let screend_width = graphics::drawable_size(context).0;
-        let screend_width_half = screend_width * 0.5;
+        graphics::clear(context, Color::from_rgb_u32(constants::SCREEN_COLOR));
+        let screen_width = graphics::drawable_size(context).0;
+        let screen_width_half = screen_width * 0.5;
 
+        // Draw score board
+        let mut life_text = Text::new(format!("Life: {}", self.life));
+        life_text.set_font(graphics::Font::default(), graphics::Scale::uniform(24.0));
+
+        let (life_text_w, life_text_h) = life_text.dimensions(context);
+        let mut life_pos = na::Point2::new(screen_width_half, constants::SCORE_BOARD_PADDING);
+        life_pos -= na::Vector2::new(life_text_w as f32 * 0.5, life_text_h as f32 * 0.5);
+
+        let mut draw_param = graphics::DrawParam::default();
+        draw_param.dest = life_pos.into();
+        graphics::draw(context, &life_text, draw_param)?;
+
+        let mut score_text = Text::new(format!("Score: {}", self.score));
+        score_text.set_font(graphics::Font::default(), graphics::Scale::uniform(24.0));
+
+        let (score_text_w, score_text_h) = score_text.dimensions(context);
+        let mut score_pos = na::Point2::new(
+            screen_width_half,
+            constants::SCORE_BOARD_PADDING + life_text_h as f32,
+        );
+        score_pos -= na::Vector2::new(score_text_w as f32 * 0.5, score_text_h as f32 * 0.5);
+
+        draw_param.dest = score_pos.into();
+        graphics::draw(context, &score_text, draw_param)?;
+
+        if self.life <= 0 {
+            utilities::draw_game_over_screen(context)?;
+            graphics::present(context)?;
+            return Ok(());
+        }
+        
         // Draw player
         let player = graphics::Rect::new(
             self.player_pos.x,
@@ -124,31 +173,6 @@ impl event::EventHandler for GameState {
             )?;
             graphics::draw(context, &fire_mesh, DrawParam::default())?;
         }
-
-        // Draw score board
-        let mut life_text = Text::new(format!("Life: {}", self.life));
-        life_text.set_font(graphics::Font::default(), graphics::Scale::uniform(24.0));
-
-        let (life_text_w, life_text_h) = life_text.dimensions(context);
-        let mut life_pos = na::Point2::new(screend_width_half, constants::SCORE_BOARD_PADDING);
-        life_pos -= na::Vector2::new(life_text_w as f32 * 0.5, life_text_h as f32 * 0.5);
-
-        let mut draw_param = graphics::DrawParam::default();
-        draw_param.dest = life_pos.into();
-        graphics::draw(context, &life_text, draw_param)?;
-
-        let mut score_text = Text::new(format!("Score: {}", self.score));
-        score_text.set_font(graphics::Font::default(), graphics::Scale::uniform(24.0));
-
-        let (score_text_w, score_text_h) = score_text.dimensions(context);
-        let mut score_pos = na::Point2::new(
-            screend_width_half,
-            constants::SCORE_BOARD_PADDING + life_text_h as f32,
-        );
-        score_pos -= na::Vector2::new(score_text_w as f32 * 0.5, score_text_h as f32 * 0.5);
-
-        draw_param.dest = score_pos.into();
-        graphics::draw(context, &score_text, draw_param)?;
 
         graphics::present(context)?;
         Ok(())

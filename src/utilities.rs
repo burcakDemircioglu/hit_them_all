@@ -1,7 +1,8 @@
 use ggez::{
     self,
+    graphics::{self, Text},
     input::keyboard::{self, KeyCode},
-    nalgebra as na, Context,
+    nalgebra as na, Context, GameResult,
 };
 use rand::{thread_rng, Rng};
 use std::time::SystemTime;
@@ -76,6 +77,8 @@ pub fn set_controls(
     dt: f32,
     screend_width: f32,
     player_pos: &mut na::Point2<f32>,
+    life: &mut i32,
+    score: &mut i32,
 ) {
     if keyboard::is_key_pressed(context, KeyCode::Right) {
         player_pos.x += constants::PLAYER_SPEED * dt;
@@ -92,6 +95,11 @@ pub fn set_controls(
             0.0,
             screend_width - constants::PLAYER_WIDTH,
         )
+    }
+
+    if *life <= 0 && keyboard::is_key_pressed(context, KeyCode::Space) {
+        *score = 0;
+        *life = 3;
     }
 }
 
@@ -131,4 +139,54 @@ pub fn create_fires(
         ));
         *last_fire_time = now;
     }
+}
+
+pub fn draw_game_over_screen(context: &mut Context) -> GameResult {
+    let mut game_over_text = Text::new(format!("Game Over!"));
+    game_over_text.set_font(graphics::Font::default(), graphics::Scale::uniform(40.0));
+
+    let (screen_width, screen_height) = graphics::drawable_size(context);
+    let screen_width_half = screen_width * 0.5;
+    let screen_height_half = screen_height * 0.5;
+    let (game_over_text_w, game_over_text_h) = game_over_text.dimensions(context);
+    let game_over_pos = na::Point2::new(
+        screen_width_half - (game_over_text_w / 2) as f32,
+        screen_height_half,
+    );
+
+    let mut draw_param = graphics::DrawParam::default();
+    draw_param.dest = game_over_pos.into();
+    graphics::draw(context, &game_over_text, draw_param)?;
+
+    let mut start_again_text = Text::new(format!("Press space to start again."));
+    start_again_text.set_font(graphics::Font::default(), graphics::Scale::uniform(20.0));
+
+    let (screen_width, screen_height) = graphics::drawable_size(context);
+    let screend_width_half = screen_width * 0.5;
+    let screen_height_half = screen_height * 0.5;
+    let start_again_text_w = start_again_text.dimensions(context).0;
+    let start_again_pos = na::Point2::new(
+        screend_width_half - (start_again_text_w / 2) as f32,
+        screen_height_half + game_over_text_h as f32 + 10.0,
+    );
+
+    let mut draw_param = graphics::DrawParam::default();
+    draw_param.dest = start_again_pos.into();
+    graphics::draw(context, &start_again_text, draw_param)
+}
+
+pub fn reset_the_game(
+    context: &mut Context,
+    player_pos: &mut na::Point2<f32>,
+    invader_positions: &mut std::vec::Vec<na::Point2<f32>>,
+    fire_positions: &mut std::vec::Vec<na::Point2<f32>>,
+) {
+    let (screend_width, screen_height) = graphics::drawable_size(context);
+
+    *player_pos = na::Point2::new(
+        (screend_width * 0.5) - constants::PLAYER_WIDTH_HALF,
+        screen_height - constants::PLAYER_PADDING,
+    );
+    *invader_positions = create_invaders(screend_width);
+    *fire_positions = std::vec::Vec::new();
 }

@@ -11,3 +11,4 @@ pub const FIRE_LENGTH: f32 = 10.0;
 pub const FIRE_WIDTH: f32 = 2.0;
 pub const FIRE_SPEED: f32 = 300.0;
 pub const FIRE_PADDING: f32 = FIRE_LENGTH * 10.0;
+pub const SCREEN_COLOR: u32 = 0x767676;
