@@ -35,7 +35,7 @@ pub fn is_hit(
 pub fn get_init_invader_pos(screend_width: f32) -> na::Point<f32, na::U2> {
     return na::Point2::new(
         thread_rng().gen_range(0.0, screend_width - constants::INVADER_SIZE),
-        0.0,
+        0.0 - constants::INVADER_SIZE,
     );
 }
 
