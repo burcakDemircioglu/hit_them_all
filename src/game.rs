@@ -13,6 +13,7 @@ pub struct GameState {
     score: i32,
     life: i32,
     last_fire_time: u128,
+    highest_score: i32,
 }
 
 impl GameState {
@@ -29,6 +30,7 @@ impl GameState {
             score: 0,
             life: 3,
             last_fire_time: utilities::get_current_time_as_millis(),
+            highest_score: utilities::get_highest_score(),
         }
     }
 }
@@ -131,12 +133,32 @@ impl event::EventHandler for GameState {
         draw_param.dest = score_pos.into();
         graphics::draw(context, &score_text, draw_param)?;
 
+        let mut highest_score_text = Text::new(format!("Highest Score: {}", self.highest_score));
+        highest_score_text.set_font(graphics::Font::default(), graphics::Scale::uniform(24.0));
+
+        let (highest_score_text_w, highest_score_text_h) = highest_score_text.dimensions(context);
+        let mut highest_score_pos = na::Point2::new(
+            screen_width_half,
+            constants::SCORE_BOARD_PADDING + life_text_h as f32 + score_text_h as f32,
+        );
+        highest_score_pos -= na::Vector2::new(
+            highest_score_text_w as f32 * 0.5,
+            highest_score_text_h as f32 * 0.5,
+        );
+
+        draw_param.dest = highest_score_pos.into();
+        graphics::draw(context, &highest_score_text, draw_param)?;
+
         if self.life <= 0 {
+            if self.score > self.highest_score {
+                utilities::set_highest_score(self.score)?;
+                self.highest_score = self.score;
+            }
             utilities::draw_game_over_screen(context)?;
             graphics::present(context)?;
             return Ok(());
         }
-        
+
         // Draw player
         let player = graphics::Rect::new(
             self.player_pos.x,

@@ -5,6 +5,7 @@ use ggez::{
     nalgebra as na, Context, GameResult,
 };
 use rand::{thread_rng, Rng};
+use std::fs;
 use std::time::SystemTime;
 
 use crate::constants;
@@ -189,4 +190,21 @@ pub fn reset_the_game(
     );
     *invader_positions = create_invaders(screend_width);
     *fire_positions = std::vec::Vec::new();
+}
+
+pub fn get_highest_score() -> i32 {
+    let contents = fs::read_to_string(constants::HIGHEST_SCORE_FILE_NAME);
+    if contents.is_err() {
+        return 0;
+    }
+    let first_line = contents.unwrap().lines().next().unwrap().to_string();
+    let highest_score = first_line.parse::<i32>();
+    if highest_score.is_err() {
+        return 0;
+    }
+    return highest_score.unwrap();
+}
+
+pub fn set_highest_score(score: i32) -> std::io::Result<()> {
+    fs::write(constants::HIGHEST_SCORE_FILE_NAME, score.to_string())
 }
